@@ -32,11 +32,6 @@ extern int sceKernelGetMemBlockBase(SceUID uid, void **basep);
 #define SCE_GXM_MEMORY_ATTRIB_RW	(SCE_GXM_MEMORY_ATTRIB_READ | SCE_GXM_MEMORY_ATTRIB_WRITE)
 
 
-typedef int SceIoMode;
-typedef int SceUID;
-typedef int SceSSize;
-typedef unsigned int SceSize;
-
 #define PSP2_O_RDONLY    (0x0001)
 #define PSP2_O_WRONLY    (0x0002)
 #define PSP2_O_RDWR      (PSP2_O_RDONLY|PSP2_O_WRONLY)
@@ -45,17 +40,17 @@ typedef unsigned int SceSize;
 #define PSP2_O_TRUNC     (0x0400)
 
 
-// SceUID sceIoOpen(const char *filename, int flag, SceIoMode mode);
-// SceSSize sceIoWrite(SceUID fd, const void *buf, SceSize nbyte);
-// int sceIoClose(SceUID fd);
-// FILE *fopen(const char *filename, const char *mode);
+#define FIO_S_IFMT			(0xF000)
+#define FIO_S_IFDIR			(0x1000)
+
+#define FIO_S_ISDIR(m)	(((m) & FIO_S_IFMT) == FIO_S_IFDIR)
 
 
-// SceUID sceIoDopen(const char *dirname);
 
-// int    sceIoDclose(SceUID fd);
-
-
+typedef int SceIoMode;
+typedef int SceUID;
+typedef int SceSSize;
+typedef unsigned int SceSize;
 
 
 typedef struct SceIoStat {
@@ -74,14 +69,6 @@ typedef struct SceIoDirent {
 	void		*d_private;
 	int			dummy;
 } SceIoDirent;
-
-
-
-
-#define FIO_S_IFMT			(0xF000)
-#define FIO_S_IFDIR			(0x1000)
-
-#define FIO_S_ISDIR(m)	(((m) & FIO_S_IFMT) == FIO_S_IFDIR)
 
 
 #endif
