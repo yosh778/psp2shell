@@ -282,7 +282,7 @@ int module_start(int argc, char * argv[])
 void printoob(char * text, int x, int y, unsigned int color)
 {
 	// Convert screen coordinates from 480x272 to 960x544
-	font_draw_string((x*960*99)/(480*100), (y*544)/272, color, text);
+	font_draw_string((x*2*95)/100, y*2, color, text);
 }
 
 // Update File List
