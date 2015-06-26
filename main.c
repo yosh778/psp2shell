@@ -10,8 +10,12 @@
 #include <psp2/gxm.h>
 #include <psp2/types.h>
 #include <psp2/moduleinfo.h>
+#include <psp2/io/fcntl.h>
+#include <psp2/io/dirent.h>
+#include <psp2/kernel/processmgr.h>
+#include <psp2/kernel/threadmgr.h>
+#include <psp2/kernel/memorymgr.h>
 
-#include "defines.h"
 #include "draw.h"
 
 PSP2_MODULE_INFO(0, 0, "psp2shell");
@@ -36,7 +40,7 @@ enum {
 #define POPS_RUNLEVEL 0x144
 
 // Current Runlevel
-// 0x144 = Pops 
+// 0x144 = Pops
 // 0x141 = Homebrew
 // 0x123 = ISO / CSO / PSN
 int mode = MODE_HOMEBREW;
@@ -79,10 +83,10 @@ typedef struct File
 {
 	// Next Item
 	struct File * next;
-	
+
 	// Folder Flag
 	int isFolder;
-	
+
 	// File Name
 	char name[256];
 } File;
@@ -115,20 +119,20 @@ int filecount = 0;
 File * files = NULL;
 
 // Entry Point
-int module_start(int argc, char * argv[])
+int main()
 {
 	// Set Start Path
 	strcpy(cwd, START_PATH);
-	
+
 	// Initialize Screen Output
 	init_video();
-	
+
 	// Update List
 	updateList(CLEAR);
-	
+
 	// Paint List
 	paintList(KEEP);
-	
+
 	// Last Buttons
 	unsigned int lastbuttons = 0;
 
@@ -157,7 +161,7 @@ int module_start(int argc, char * argv[])
 				//start();
 				break;
 			}
-			
+
 			// Delete File
 			else if(PRESSED(lastbuttons, data.buttons, PSP2_CTRL_SELECT))
 			{
@@ -166,54 +170,54 @@ int module_start(int argc, char * argv[])
 				{
 					// Update List
 					updateList(KEEP);
-					
+
 					// Paint List
 					paintList(CLEAR);
 				}
 			}
-			
+
 			// Position Decrement
 			else if(PRESSED(lastbuttons, data.buttons, PSP2_CTRL_UP))
 			{
 				// Decrease Position
 				if(position > 0) position--;
-				
+
 				// Rewind Pointer
 				else position = filecount - 1;
-				
+
 				// Paint List
 				paintList(KEEP);
 			}
-			
+
 			// Position Increment
 			else if(PRESSED(lastbuttons, data.buttons, PSP2_CTRL_DOWN))
 			{
 				// Increase Position
 				if(position < (filecount - 1)) position++;
-				
+
 				// Rewind Pointer
 				else position = 0;
-				
+
 				// Paint List
 				paintList(KEEP);
 			}
-			
+
 			// Runlevel Change
 			else if(PRESSED(lastbuttons, data.buttons, PSP2_CTRL_LEFT))
 			{
 				if(--mode < 0) mode = MODE_MAX - 1;
-				
+
 				// Paint List
 				paintList(CLEAR);
 			}
 			else if(PRESSED(lastbuttons, data.buttons, PSP2_CTRL_RIGHT))
 			{
 				if(++mode >= MODE_MAX) mode = 0;
-				
+
 				// Paint List
 				paintList(CLEAR);
 			}
-			
+
 			// Navigate to Folder
 			else if(PRESSED(lastbuttons, data.buttons, PSP2_CTRL_CROSS))
 			{
@@ -222,32 +226,32 @@ int module_start(int argc, char * argv[])
 				{
 					// Update List
 					updateList(CLEAR);
-					
+
 					// Paint List
 					paintList(CLEAR);
 				}
 			}
-			
+
 			// Copy
 			else if(PRESSED(lastbuttons, data.buttons, PSP2_CTRL_SQUARE))
 			{
 				// Copy File
 				copy(COPY_KEEP_ON_FINISH);
-				
+
 				// Paint List
 				paintList(KEEP);
 			}
-			
+
 			// Cut
 			else if(PRESSED(lastbuttons, data.buttons, PSP2_CTRL_TRIANGLE))
 			{
 				// Copy File
 				copy(COPY_DELETE_ON_FINISH);
-				
+
 				// Paint List
 				paintList(KEEP);
 			}
-			
+
 			// Paste
 			else if(PRESSED(lastbuttons, data.buttons, PSP2_CTRL_CIRCLE))
 			{
@@ -256,13 +260,13 @@ int module_start(int argc, char * argv[])
 				{
 					// Update List
 					updateList(KEEP);
-					
+
 					// Paint List
 					paintList(CLEAR);
 				}
 			}
 		}
-		
+
 		// Copy Buttons to Memory
 		lastbuttons = data.buttons;
 
@@ -307,10 +311,10 @@ void updateList(int clearindex)
 
 			// Clear Memory
 			memset(files, 0, sizeof(File));
-			
+
 			// Copy File Name
 			strcpy(files->name, "..");
-			
+
 			// Set Folder Flag
 			files->isFolder = 1;
 
@@ -325,13 +329,13 @@ void updateList(int clearindex)
 		{
 			// File Info
 			SceIoDirent info;
-			
+
 			// Clear Memory
 			memset(&info, 0, sizeof(info));
-			
+
 			// Read File Data
 			dreadresult = sceIoDread(directory, &info);
-			
+
 			// Read Success
 			if(dreadresult >= 0)
 			{
@@ -346,28 +350,28 @@ void updateList(int clearindex)
 
 				// Allocate Memory
 				File * item = (File *)malloc(sizeof(File));
-				
+
 				// Clear Memory
 				memset(item, 0, sizeof(File));
-				
+
 				// Copy File Name
 				strcpy(item->name, info.d_name);
-				
+
 				// Set Folder Flag
-				item->isFolder = FIO_S_ISDIR(info.d_stat.st_mode);
+				item->isFolder = PSP2_S_ISDIR(info.d_stat.st_mode);
 
 				// New List
 				if(files == NULL) files = item;
-				
+
 				// Existing List
 				else
 				{
 					// Iterator Variable
 					File * list = files;
-					
+
 					// Append to List
 					while(list->next != NULL) list = list->next;
-					
+
 					// Link Item
 					list->next = item;
 				}
@@ -376,18 +380,18 @@ void updateList(int clearindex)
 				filecount++;
 			}
 		}
-		
+
 		// Close Directory
 		sceIoDclose(directory);
 	}
-	
+
 	// Attempt to keep Index
 	if(!clearindex)
 	{
 		// Fix Position
 		if(position >= filecount) position = filecount - 1;
 	}
-	
+
 	// Reset Position
 	else position = 0;
 }
@@ -419,14 +423,14 @@ void paintList(int withclear)
 	// Clear Screen
 	//if(withclear)
 		clear_screen();
-	
+
 	// Paint Current Path
 	printoob(cwd, 10, 10, FONT_COLOR);
-	
+
 	// Paint Current Runlevel
 	char * strrunlevel = getModeStr(mode);
 	printoob(strrunlevel, RIGHT_X(strrunlevel) - 10, 10, FONT_COLOR);
-	
+
 	// Paint Controls
 	printoob("[ UP & DOWN ]    File Selection", 10, 252, FONT_COLOR);
 	printoob("[ LEFT & RIGHT ] Mode Selection", 10, 262, FONT_COLOR);
@@ -436,39 +440,39 @@ void paintList(int withclear)
 	printoob("TRIANGLE  Cut", 345, 130, FONT_COLOR);
 	printoob("CIRCLE    Paste", 345, 140, FONT_COLOR);
 	printoob("CROSS     Navigate", 345, 150, FONT_COLOR);
-	
+
 	// Copy Paste in Progress
 	if(copymode != NOTHING_TO_COPY)
 	{
 		// Get Cache Source Filename
 		char * filename = NULL; int i = 0; for(; i < strlen(copysource); i++) if(copysource[i] == '/') filename = copysource + i + 1;
-		
+
 		// Paint to Screen
 		printoob(filename, 10, 242, FONT_SELECT_COLOR);
 	}
-	
+
 	// File Iterator Variable
 	int i = 0;
-	
+
 	// Print Counter
 	int printed = 0;
-	
+
 	// Paint File List
 	File * file = files;
 	for(; file != NULL; file = file->next)
 	{
 		// Printed enough already
 		if(printed == FILES_PER_PAGE) break;
-		
+
 		// Interesting File
 		if(position < FILES_PER_PAGE || i > (position - FILES_PER_PAGE))
 		{
 			// Default Font Color
 			unsigned int color = FONT_COLOR;
-			
+
 			// Selected File Font Color
 			if(i == position) color = FONT_SELECT_COLOR;
-			
+
 			// Print Node Type
 			printoob((file->isFolder) ? ("D") : ("F"), 10, 30 + (FONT_SIZE + PADDING) * printed, FONT_COLOR);
 
@@ -483,14 +487,14 @@ void paintList(int withclear)
 			{
 				strcat(buf, " ");
 			}
-			
+
 			// Print Filename
 			printoob(buf, 20, 30 + (FONT_SIZE + PADDING) * printed, color);
-			
+
 			// Increase Print Counter
 			printed++;
 		}
-		
+
 		// Increase Counter
 		i++;
 	}
@@ -505,10 +509,10 @@ void recursiveFree(File * node)
 {
 	// End of List
 	if(node == NULL) return;
-	
+
 	// Nest Further
 	recursiveFree(node->next);
-	
+
 	// Free Memory
 	free(node);
 }
@@ -537,16 +541,16 @@ int isPathCSO(const char * path)
 {
 	// Result (Not CSO)
 	int result = 0;
-	
+
 	// Open File
 	SceUID fd = sceIoOpen(path, PSP2_O_RDONLY, 0777);
-	
+
 	// Opened File
 	if(fd >= 0)
 	{
 		// Header Buffer
 		unsigned char header[4];
-		
+
 		// Read Header
 		if(sizeof(header) == sceIoRead(fd, header, sizeof(header)))
 		{
@@ -554,7 +558,7 @@ int isPathCSO(const char * path)
 			unsigned char isoFlags[4] = {
 				0x43, 0x49, 0x53, 0x4F
 			};
-			
+
 			// Valid Magic
 			if(0 == memcmp(header, isoFlags, sizeof(header)))
 			{
@@ -562,11 +566,11 @@ int isPathCSO(const char * path)
 				result = 1;
 			}
 		}
-		
+
 		// Close File
 		sceIoClose(fd);
 	}
-	
+
 	// Return Result
 	return result;
 }
@@ -580,7 +584,7 @@ int isGameISO(const char * path)
 		// Game ISO
 		return 1;
 	}
-	
+
 	// Something else...
 	return 0;
 }
@@ -605,7 +609,7 @@ void start(void)
 {
 	// Find File
 	File * file = findindex(position);
-	
+
 	// Not a valid file
 	if(file == NULL || file->isFolder) return;
 }
@@ -615,7 +619,7 @@ int delete(void)
 {
 	// Find File
 	File * file = findindex(position);
-	
+
 	// Not found
 	if(file == NULL) return -1;
 
@@ -623,22 +627,22 @@ int delete(void)
 
 	// File Path
 	char path[1024];
-	
+
 	// Puzzle Path
 	strcpy(path, cwd);
 	strcpy(path + strlen(path), file->name);
-	
+
 	// Delete Folder
 	if(file->isFolder)
 	{
 		// Add Trailing Slash
 		path[strlen(path) + 1] = 0;
 		path[strlen(path)] = '/';
-		
+
 		// Delete Folder
 		return delete_folder_recursive(path);
 	}
-	
+
 	// Delete File
 	else return sceIoRemove(path);
 }
@@ -648,16 +652,16 @@ int navigate(void)
 {
 	// Find File
 	File * file = findindex(position);
-	
+
 	// Not a Folder
 	if(file == NULL || !file->isFolder) return -1;
-	
+
 	// Special Case ".."
 	if(strcmp(file->name, "..") == 0)
 	{
 		// Slash Pointer
 		char * slash = NULL;
-		
+
 		// Find Last '/' in Working Directory
 		int i = strlen(cwd) - 2; for(; i >= 0; i--)
 		{
@@ -666,16 +670,16 @@ int navigate(void)
 			{
 				// Save Pointer
 				slash = cwd + i + 1;
-				
+
 				// Stop Search
 				break;
 			}
 		}
-		
+
 		// Terminate Working Directory
 		slash[0] = 0;
 	}
-	
+
 	// Normal Folder
 	else
 	{
@@ -684,7 +688,7 @@ int navigate(void)
 		cwd[strlen(cwd) + 1] = 0;
 		cwd[strlen(cwd)] = '/';
 	}
-	
+
 	// Return Success
 	return 0;
 }
@@ -694,17 +698,17 @@ void copy(int flag)
 {
 	// Find File
 	File * file = findindex(position);
-	
+
 	// Not found
 	if(file == NULL) return;
-	
+
 	// Copy File Source
 	strcpy(copysource, cwd);
 	strcpy(copysource + strlen(copysource), file->name);
-	
+
 	// Add Recursive Folder Flag
 	if(file->isFolder) flag |= COPY_FOLDER_RECURSIVE;
-	
+
 	// Set Copy Flags
 	copymode = flag;
 }
@@ -714,7 +718,7 @@ int paste(void)
 {
 	// No Copy Source
 	if(copymode == NOTHING_TO_COPY) return -1;
-	
+
 	// Source and Target Folder are identical
 	char * lastslash = NULL; int i = 0; for(; i < strlen(copysource); i++) if(copysource[i] == '/') lastslash = copysource + i;
 	char backup = lastslash[1];
@@ -722,23 +726,23 @@ int paste(void)
 	int identical = strcmp(copysource, cwd) == 0;
 	lastslash[1] = backup;
 	if(identical) return -2;
-	
+
 	// Source Filename
 	char * filename = lastslash + 1;
-	
+
 	// Required Target Path Buffer Size
 	int requiredlength = strlen(cwd) + strlen(filename) + 1;
-	
+
 	// Allocate Target Path Buffer
 	char * copytarget = (char *)malloc(requiredlength);
-	
+
 	// Puzzle Target Path
 	strcpy(copytarget, cwd);
 	strcpy(copytarget + strlen(copytarget), filename);
-	
+
 	// Return Result
 	int result = -3;
-	
+
 	// Recursive Folder Copy
 	if((copymode & COPY_FOLDER_RECURSIVE) == COPY_FOLDER_RECURSIVE)
 	{
@@ -752,28 +756,28 @@ int paste(void)
 				return -4;
 			}
 		}
-		
+
 		// Copy Folder recursively
 		result = copy_folder_recursive(copysource, copytarget);
-		
+
 		// Source Delete
 		if(result == 0 && (copymode & COPY_DELETE_ON_FINISH) == COPY_DELETE_ON_FINISH)
 		{
 			// Append Trailing Slash (for recursion to work)
 			copysource[strlen(copysource) + 1] = 0;
 			copysource[strlen(copysource)] = '/';
-			
+
 			// Delete Source
 			delete_folder_recursive(copysource);
 		}
 	}
-	
+
 	// Simple File Copy
 	else
 	{
 		// Copy File
 		result = copy_file(copysource, copytarget);
-		
+
 		// Source Delete
 		if(result == 0 && (copymode & COPY_DELETE_ON_FINISH) == COPY_DELETE_ON_FINISH)
 		{
@@ -781,7 +785,7 @@ int paste(void)
 			sceIoRemove(copysource);
 		}
 	}
-	
+
 	// Paste Success
 	if(result == 0)
 	{
@@ -789,10 +793,10 @@ int paste(void)
 		memset(copysource, 0, sizeof(copysource));
 		copymode = NOTHING_TO_COPY;
 	}
-	
+
 	// Free Target Path Buffer
 	free(copytarget);
-	
+
 	// Return Result
 	return result;
 }
@@ -802,10 +806,10 @@ File * findindex(int index)
 {
 	// File Iterator Variable
 	int i = 0;
-	
+
 	// Find File Item
 	File * file = files; for(; file != NULL && i != index; file = file->next) i++;
-	
+
 	// Return File
 	return file;
 }
@@ -815,28 +819,28 @@ int delete_folder_recursive(char * path)
 {
 	// Internal File List
 	File * filelist = NULL;
-	
+
 	// Open Working Directory
 	int directory = sceIoDopen(path);
-	
+
 	// Opened Directory
 	if(directory >= 0)
 	{
 		// File Info Read Result
 		int dreadresult = 1;
-		
+
 		// Iterate Files
 		while(dreadresult > 0)
 		{
 			// File Info
 			SceIoDirent info;
-			
+
 			// Clear Memory
 			memset(&info, 0, sizeof(info));
-			
+
 			// Read File Data
 			dreadresult = sceIoDread(directory, &info);
-			
+
 			// Read Success
 			if(dreadresult >= 0)
 			{
@@ -847,45 +851,45 @@ int delete_folder_recursive(char * path)
 					{
 						continue;
 					}
-					
+
 					// Allocate Memory
 					File * item = (File *)malloc(sizeof(File));
-					
+
 					// Clear Memory
 					memset(item, 0, sizeof(File));
-					
+
 					// Copy File Name
 					strcpy(item->name, info.d_name);
-					
+
 					// Set Folder Flag
-					item->isFolder = FIO_S_ISDIR(info.d_stat.st_mode);
-					
+					item->isFolder = PSP2_S_ISDIR(info.d_stat.st_mode);
+
 					// New List
 					if(filelist == NULL) filelist = item;
-					
+
 					// Existing List
 					else
 					{
 						// Iterator Variable
 						File * list = filelist;
-						
+
 						// Append to List
 						while(list->next != NULL) list = list->next;
-						
+
 						// Link Item
 						list->next = item;
 					}
 				}
 			}
 		}
-		
+
 		// Close Directory
 		sceIoDclose(directory);
 	}
-	
+
 	// List Node
 	File * node = filelist;
-	
+
 	// Iterate Files
 	for(; node != NULL; node = node->next)
 	{
@@ -894,10 +898,10 @@ int delete_folder_recursive(char * path)
 		{
 			// Required Buffer Size
 			int size = strlen(path) + strlen(node->name) + 2;
-			
+
 			// Allocate Buffer
 			char * buffer = (char *)malloc(size);
-			
+
 			// Combine Path
 			strcpy(buffer, path);
 			strcpy(buffer + strlen(buffer), node->name);
@@ -906,32 +910,32 @@ int delete_folder_recursive(char * path)
 
 			// Recursion Delete
 			delete_folder_recursive(buffer);
-			
+
 			// Free Memory
 			free(buffer);
 		}
-		
+
 		// File
 		else
 		{
 			// Required Buffer Size
 			int size = strlen(path) + strlen(node->name) + 1;
-			
+
 			// Allocate Buffer
 			char * buffer = (char *)malloc(size);
-			
+
 			// Combine Path
 			strcpy(buffer, path);
 			strcpy(buffer + strlen(buffer), node->name);
 
 			// Delete File
 			sceIoRemove(buffer);
-			
+
 			// Free Memory
 			free(buffer);
 		}
 	}
-	
+
 	// Free temporary List
 	recursiveFree(filelist);
 
@@ -944,67 +948,67 @@ int copy_file(char * a, char * b)
 {
 	// Chunk Size
 	int chunksize = 512 * 1024;
-	
+
 	// Reading Buffer
 	char * buffer = (char *)malloc(chunksize);
-	
+
 	// Accumulated Writing
 	int totalwrite = 0;
-	
+
 	// Accumulated Reading
 	int totalread = 0;
-	
+
 	// Result
 	int result = 0;
-	
+
 	// Open File for Reading
 	int in = sceIoOpen(a, PSP2_O_RDONLY, 0777);
-	
+
 	// Opened File for Reading
 	if(in >= 0)
 	{
 		// Delete Output File (if existing)
 		sceIoRemove(b);
-		
+
 		// Open File for Writing
 		int out = sceIoOpen(b, PSP2_O_WRONLY | PSP2_O_CREAT, 0777);
-		
+
 		// Opened File for Writing
 		if(out >= 0)
 		{
 			// Read Byte Count
 			int read = 0;
-			
+
 			// Copy Loop (512KB at a time)
 			while((read = sceIoRead(in, buffer, chunksize)) > 0)
 			{
 				// Accumulate Read Data
 				totalread += read;
-				
+
 				// Write Data
 				totalwrite += sceIoWrite(out, buffer, read);
 			}
-			
+
 			// Close Output File
 			sceIoClose(out);
-			
+
 			// Insufficient Copy
 			if(totalread != totalwrite) result = -3;
 		}
-		
+
 		// Output Open Error
 		else result = -2;
-		
+
 		// Close Input File
 		sceIoClose(in);
 	}
-	
+
 	// Input Open Error
 	else result = -1;
-	
+
 	// Free Memory
 	free(buffer);
-	
+
 	// Return Result
 	return result;
 }
@@ -1014,28 +1018,28 @@ int copy_folder_recursive(char * a, char * b)
 {
 	// Open Working Directory
 	int directory = sceIoDopen(a);
-	
+
 	// Opened Directory
 	if(directory >= 0)
 	{
 		// Create Output Directory (is allowed to fail, we can merge folders after all)
 		sceIoMkdir(b, 0777);
-		
+
 		// File Info Read Result
 		int dreadresult = 1;
-		
+
 		// Iterate Files
 		while(dreadresult > 0)
 		{
 			// File Info
 			SceIoDirent info;
-			
+
 			// Clear Memory
 			memset(&info, 0, sizeof(info));
-			
+
 			// Read File Data
 			dreadresult = sceIoDread(directory, &info);
-			
+
 			// Read Success
 			if(dreadresult >= 0)
 			{
@@ -1045,51 +1049,51 @@ int copy_folder_recursive(char * a, char * b)
 					// Calculate Buffer Size
 					int insize = strlen(a) + strlen(info.d_name) + 2;
 					int outsize = strlen(b) + strlen(info.d_name) + 2;
-					
+
 					// Allocate Buffer
 					char * inbuffer = (char *)malloc(insize);
 					char * outbuffer = (char *)malloc(outsize);
-					
+
 					// Puzzle Input Path
 					strcpy(inbuffer, a);
 					inbuffer[strlen(inbuffer) + 1] = 0;
 					inbuffer[strlen(inbuffer)] = '/';
 					strcpy(inbuffer + strlen(inbuffer), info.d_name);
-					
+
 					// Puzzle Output Path
 					strcpy(outbuffer, b);
 					outbuffer[strlen(outbuffer) + 1] = 0;
 					outbuffer[strlen(outbuffer)] = '/';
 					strcpy(outbuffer + strlen(outbuffer), info.d_name);
-					
+
 					// Another Folder
-					if(FIO_S_ISDIR(info.d_stat.st_mode))
+					if(PSP2_S_ISDIR(info.d_stat.st_mode))
 					{
 						// Copy Folder (via recursion)
 						copy_folder_recursive(inbuffer, outbuffer);
 					}
-					
+
 					// Simple File
 					else
 					{
 						// Copy File
 						copy_file(inbuffer, outbuffer);
 					}
-					
+
 					// Free Buffer
 					free(inbuffer);
 					free(outbuffer);
 				}
 			}
 		}
-		
+
 		// Close Directory
 		sceIoDclose(directory);
-		
+
 		// Return Success
 		return 0;
 	}
-	
+
 	// Open Error
 	else return -1;
 }
