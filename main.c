@@ -146,9 +146,7 @@ int main()
 		memset(&data, 0, sizeof(data));
 
 		// Read Button Data
-		//sceCtrlSetSamplingCycle(0);
 		sceCtrlSetSamplingMode(1);
-		//sceCtrlReadBufferPositive(0, &data, 1);
 		sceCtrlPeekBufferPositive(0, &data, 1);
 
 		// Other Commands
