@@ -7,8 +7,10 @@
 #include <stdarg.h>
 #include <psp2/display.h>
 #include <psp2/gxm.h>
+#include <psp2/kernel/memorymgr.h>
 #include "draw.h"
-#include "defines.h"
+
+#define align_mem(addr, align) (((addr) + ((align) - 1)) & ~((align) - 1))
 
 extern const unsigned char msx_font[];
 
