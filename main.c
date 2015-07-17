@@ -14,7 +14,7 @@
 #include <psp2/io/dirent.h>
 #include <psp2/kernel/processmgr.h>
 #include <psp2/kernel/threadmgr.h>
-#include <psp2/kernel/memorymgr.h>
+#include <psp2/kernel/sysmem.h>
 
 #include "draw.h"
 
